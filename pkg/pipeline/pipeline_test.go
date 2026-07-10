@@ -241,3 +241,45 @@ func TestPipelineRunWithSpecFullExample(t *testing.T) {
 		t.Fatal("expected TypeScript artifacts from spec-full.yaml generation")
 	}
 }
+
+func TestPipelineVerboseMode(t *testing.T) {
+	p, err := New(Config{Verbose: true})
+	if err != nil {
+		t.Fatalf("create pipeline failed: %v", err)
+	}
+
+	if !p.verbose {
+		t.Fatal("expected verbose to be true")
+	}
+
+	result, err := p.Run("sample specification")
+	if err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+}
+
+func TestPipelineVerboseDisabled(t *testing.T) {
+	p, err := New(Config{Verbose: false})
+	if err != nil {
+		t.Fatalf("create pipeline failed: %v", err)
+	}
+
+	if p.verbose {
+		t.Fatal("expected verbose to be false")
+	}
+}
+
+func TestPipelineRendererIntegration(t *testing.T) {
+	p, err := New(Config{})
+	if err != nil {
+		t.Fatalf("create pipeline failed: %v", err)
+	}
+
+	renderer := p.Renderer()
+	if renderer == nil {
+		t.Fatal("expected renderer to be set")
+	}
+}

@@ -1,0 +1,339 @@
+openapi: 3.0.3
+info:
+  title: NAEOS API
+  description: REST API for NAEOS - Nusantara Engineering & Architecture Operating System
+  version: 0.4.0
+  contact:
+    name: NAEOS Foundation
+    url: https://github.com/NAEOS-foundation/naeos
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags: [System]
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /specs:
+    get:
+      summary: List specifications
+      tags: [Specifications]
+      responses:
+        '200':
+          description: List of specifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpecListResponse'
+    post:
+      summary: Upload specification
+      tags: [Specifications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Specification'
+      responses:
+        '201':
+          description: Specification received
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpecUploadResponse'
+
+  /specs/validate:
+    post:
+      summary: Validate specification
+      tags: [Specifications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Specification'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResponse'
+
+  /specs/compile:
+    post:
+      summary: Compile specification to AI instruction sets
+      tags: [Specifications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Specification'
+      responses:
+        '200':
+          description: Compilation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompileResponse'
+
+  /pipeline/run:
+    post:
+      summary: Run pipeline
+      tags: [Pipeline]
+      responses:
+        '200':
+          description: Pipeline started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineRunResponse'
+
+  /pipeline/status:
+    get:
+      summary: Get pipeline status
+      tags: [Pipeline]
+      responses:
+        '200':
+          description: Pipeline status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineStatusResponse'
+
+  /artifacts:
+    get:
+      summary: List artifacts
+      tags: [Artifacts]
+      responses:
+        '200':
+          description: List of artifacts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtifactListResponse'
+    post:
+      summary: Store artifact
+      tags: [Artifacts]
+      responses:
+        '201':
+          description: Artifact stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtifactStoreResponse'
+
+  /context/generate:
+    post:
+      summary: Generate AI context bundle
+      tags: [Context]
+      responses:
+        '200':
+          description: Context generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextGenerateResponse'
+
+  /mcp/message:
+    post:
+      summary: Send MCP message
+      tags: [MCP]
+      responses:
+        '200':
+          description: MCP response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+            version:
+              type: string
+            uptime:
+              type: string
+
+    Specification:
+      type: object
+      properties:
+        project:
+          type: string
+        modules:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              path:
+                type: string
+        services:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              kind:
+                type: string
+              port:
+                type: integer
+
+    SpecListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            specs:
+              type: array
+              items:
+                type: string
+
+    SpecUploadResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+            modules:
+              type: integer
+
+    ValidationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            valid:
+              type: boolean
+            errors:
+              type: array
+              items:
+                type: string
+            warnings:
+              type: array
+              items:
+                type: string
+
+    CompileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            compiled:
+              type: boolean
+            targets:
+              type: array
+              items:
+                type: string
+
+    PipelineRunResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            pipeline_id:
+              type: string
+            status:
+              type: string
+
+    PipelineStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+            last_run:
+              type: string
+              nullable: true
+
+    ArtifactListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            artifacts:
+              type: array
+              items:
+                type: string
+
+    ArtifactStoreResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+
+    ContextGenerateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            context:
+              type: string
+            format:
+              type: string
+
+    MCPResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            jsonrpc:
+              type: string
+            result:
+              type: string

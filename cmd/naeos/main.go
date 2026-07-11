@@ -81,5 +81,6 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(newAPICommand())
 	root.AddCommand(newDashboardCommand())
 	root.AddCommand(newCloudCommand())
+	root.AddCommand(newCICDCommand())
 	return root
 }

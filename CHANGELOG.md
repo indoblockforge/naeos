@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [1.2.0] - 2026-07-15
+
+### Added
+- **Database layer v1.2.0** with production-ready features:
+  - `context.Context` support for all database operations (ExecContext, QueryContext, BeginTx).
+  - Connection pool configuration (MaxOpenConns, MaxIdleConns, ConnMaxLifetime, ConnMaxIdleTime).
+  - Config validation (host required, positive port, valid SSLMode).
+  - Real MySQL adapter with go-sql-driver/mysql.
+  - Real SQLite adapter with modernc.org/sqlite (WAL mode, foreign keys).
+  - Factory pattern (New, NewFromConfig) for adapter creation.
+  - Retry logic with exponential backoff for transient errors.
+  - Query logging decorator with slow query detection (>1s).
+  - Health checks for all adapters.
+  - API server database integration (SetDatabase, pipeline persistence).
+  - File-based migration loader (LoadMigrations).
+  - NES-042-Database.md specification.
+
+### Changed
+- **MySQL mock adapter** now extends BaseDatabase (reduced from ~300 to ~50 lines).
+- **SQLite mock adapter** now extends BaseDatabase (reduced from ~300 to ~50 lines).
+- **PostgreSQL mock adapter** now extends BaseDatabase (reduced from ~300 to ~50 lines).
+- **Migration Rollback** now executes Down SQL before deleting migration record.
+
+### Fixed
+- **QueryRowContext** in real adapters no longer holds connection open (scans rows directly).
+
 ## [1.1.0] - 2026-07-15
 
 ### Added

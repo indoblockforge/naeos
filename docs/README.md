@@ -46,6 +46,18 @@ Dokumen ini memetakan struktur dokumentasi NAEOS berdasarkan skema modular yang 
 - NES-038 Shared Types & Contracts — tipe data dan kontrak bersama untuk seluruh komponen.
 - NES-039 SDK Multi-Language — spesifikasi SDK multi-language (Go, TypeScript, Python, Java, Rust).
 - NES-040 Output Adapter Architecture — arsitektur output adapter untuk ekstensi bahasa.
+- NES-042 Database — database layer (PostgreSQL, MySQL, SQLite).
+- NES-043 WebSocket — WebSocket real-time communication.
+- NES-044 EventSourcing — event sourcing dan aggregate snapshots.
+- NES-045 Distributed — distributed task execution.
+- NES-046 Config Hot-Reload — configuration hot-reload.
+- NES-047 Pipeline Cache — pipeline result caching.
+- NES-048 Pipeline Middleware — composable pipeline middleware.
+- NES-049 Audit Logging — audit logging layer.
+- NES-050 HCL Parser — HCL configuration parser.
+- NES-051 Profile Detection — automatic language/framework detection.
+- NES-052 CI/CD — CI/CD pipeline automation.
+- NES-053 WASM Plugin — WASM plugin sandboxed execution.
 
 ## Dokumentasi pendukung
 - Kernel Architecture (NAEOS-KER-001) — arsitektur kernel.

@@ -203,12 +203,24 @@ internal/
   watch/            # File watcher
   security/         # Security rules
   knowledge/        # Knowledge graph
+  database/         # Database layer (PostgreSQL, MySQL, SQLite)
+  websocket/        # WebSocket real-time communication
+  eventsourcing/    # Event sourcing and aggregate snapshots
+  distributed/      # Distributed task execution
+  configreload/     # Configuration hot-reload
+  pipelinecache/    # Pipeline result caching
+  pipelinemiddleware/ # Composable pipeline middleware
+  audit/            # Audit logging layer
+  hcl/              # HCL configuration parser
+  profiledetect/    # Automatic language/framework detection
+  ai/               # AI service and LLM integration
+  pluginsdk/        # Plugin SDK with WASM runtime
 pkg/
   pipeline/         # Main pipeline
   kernel/           # System kernel
   config/           # Configuration
   plugin/           # Plugin system
-docs/               # Documentation (44 files)
+docs/               # Documentation (56 NES specs)
 wiki/               # Project wiki (19 pages)
 ```
 
@@ -219,6 +231,7 @@ wiki/               # Project wiki (19 pages)
 - [GETTING-STARTED.md](GETTING-STARTED.md) — panduan onboarding
 - [CONTRIBUTING.md](CONTRIBUTING.md) — pedoman kontribusi
 - [CHANGELOG.md](CHANGELOG.md) — version history
+- [docs/](docs/) — 56 NES specifications (NES-000 to NES-053)
 
 ## Roadmap
 
@@ -227,11 +240,13 @@ wiki/               # Project wiki (19 pages)
 - [x] v0.2.0 — Compiler Foundation (6 adapters, artifact store, profiles)
 - [x] v0.3.0 — Core Specification (Spec v2, validation, context bundles)
 - [x] v0.4.0 — MCP Server, migration engine, marketplace, benchmarks
+- [x] v1.0.0 — Stable release (test coverage, security hardening, 35+ commands)
+- [x] v1.1.0 — Critical fixes (WebSocket races, interface{}→any, godoc, OpenAPI)
+- [x] v1.2.0 — Database layer (PostgreSQL/MySQL/SQLite, retry, logging, health checks)
 
 ### In Progress
-- [ ] v0.5.0 — Cloud integration, advanced plugins
-- [ ] v0.6.0 — Dashboard UI, distributed builds
-- [ ] v1.0.0 — Stable release
+- [ ] v1.3.0 — Cloud integration, advanced plugins
+- [ ] v2.0.0 — Dashboard UI, distributed builds
 
 ## License
 
@@ -239,4 +254,4 @@ Apache License 2.0
 
 ## Status
 
-🟢 **Active Development** — NAEOS saat ini dalam tahap pengembangan aktif dengan fitur lengkap untuk specification-driven engineering.
+🟢 **Active Development** — NAEOS saat ini dalam tahap pengembangan aktif dengan fitur lengkap untuk specification-driven engineering. Versi terbaru: v1.2.0 (Database Layer).

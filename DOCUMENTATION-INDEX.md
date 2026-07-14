@@ -92,6 +92,18 @@ Dokumen ini berfungsi sebagai indeks utama untuk navigasi repositori NAEOS.
 - [docs/NES-038-Shared-Types-Contracts.md](docs/NES-038-Shared-Types-Contracts.md) — tipe data dan kontrak bersama.
 - [docs/NES-039-SDK-MultiLanguage.md](docs/NES-039-SDK-MultiLanguage.md) — spesifikasi SDK multi-language (Go, TS, Python, Java, Rust).
 - [docs/NES-040-Output-Adapter-Architecture.md](docs/NES-040-Output-Adapter-Architecture.md) — arsitektur output adapter untuk ekstensi bahasa.
+- [docs/NES-042-Database.md](docs/NES-042-Database.md) — database layer (PostgreSQL, MySQL, SQLite).
+- [docs/NES-043-WebSocket.md](docs/NES-043-WebSocket.md) — WebSocket real-time communication.
+- [docs/NES-044-EventSourcing.md](docs/NES-044-EventSourcing.md) — event sourcing dan aggregate snapshots.
+- [docs/NES-045-Distributed.md](docs/NES-045-Distributed.md) — distributed task execution.
+- [docs/NES-046-ConfigHotReload.md](docs/NES-046-ConfigHotReload.md) — configuration hot-reload.
+- [docs/NES-047-PipelineCache.md](docs/NES-047-PipelineCache.md) — pipeline result caching.
+- [docs/NES-048-PipelineMiddleware.md](docs/NES-048-PipelineMiddleware.md) — composable pipeline middleware.
+- [docs/NES-049-AuditLogging.md](docs/NES-049-AuditLogging.md) — audit logging layer.
+- [docs/NES-050-HCLParser.md](docs/NES-050-HCLParser.md) — HCL configuration parser.
+- [docs/NES-051-ProfileDetection.md](docs/NES-051-ProfileDetection.md) — automatic language/framework detection.
+- [docs/NES-052-CICD.md](docs/NES-052-CICD.md) — CI/CD pipeline automation.
+- [docs/NES-053-WASMPlugin.md](docs/NES-053-WASMPlugin.md) — WASM plugin sandboxed execution.
 
 ## 8. Rekomendasi membaca
 

@@ -57,11 +57,13 @@ graph TD
 |------|-------------|
 | Checkout | Clone repository |
 | Setup Go | Install Go 1.25 |
-| Lint | `golangci-lint` |
+| Lint | `golangci-lint` built from source to match the target Go version |
 | Vet | `go vet ./...` |
 | Test | `go test -race -coverprofile=coverage.out` |
 | Coverage | Upload to Codecov |
 | Build | `go build ./cmd/naeos/` |
+
+> Note: `golangci-lint` is installed in source mode in CI to ensure the linter binary is compiled with Go 1.25 and compatible with the repository's module Go version.
 
 ### 6.2 Release Pipeline (`release-goreleaser.yml`)
 

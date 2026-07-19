@@ -350,10 +350,12 @@ func (w *Workflow) ExecuteParallelGroup(ctx context.Context, groups []*ParallelS
 		wg.Wait()
 		close(errCh)
 
-		if err := <-errCh; err != nil {
-			w.Context.Error = err
-			_ = w.Machine.Trigger("error")
-			return err
+			for err := range errCh {
+			if err != nil {
+				w.Context.Error = err
+				_ = w.Machine.Trigger("error")
+				return err
+			}
 		}
 
 		_ = w.Machine.Trigger("next")
@@ -517,7 +519,9 @@ func NewManagerWithPath(storePath string) *Manager {
 		workflows: make(map[string]*Workflow),
 		storePath: storePath,
 	}
-	m.load()
+	if err := m.load(); err != nil {
+		fmt.Fprintf(os.Stderr, "workflow: load error: %v\n", err)
+	}
 	return m
 }
 
@@ -525,7 +529,9 @@ func (m *Manager) Register(name string, workflow *Workflow) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.workflows[name] = workflow
-	m.save()
+	if err := m.save(); err != nil {
+		fmt.Fprintf(os.Stderr, "workflow: save error: %v\n", err)
+	}
 }
 
 func (m *Manager) Get(name string) (*Workflow, bool) {
@@ -539,7 +545,9 @@ func (m *Manager) Remove(name string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.workflows, name)
-	m.save()
+	if err := m.save(); err != nil {
+		fmt.Fprintf(os.Stderr, "workflow: save error: %v\n", err)
+	}
 }
 
 func (m *Manager) List() []string {
@@ -573,11 +581,13 @@ type workflowEntry struct {
 	Steps []string `json:"steps"`
 }
 
-func (m *Manager) save() {
+func (m *Manager) save() error {
 	if m.storePath == "" {
-		return
+		return nil
 	}
-	_ = os.MkdirAll(m.storePath, 0o755)
+	if err := os.MkdirAll(m.storePath, 0o755); err != nil {
+		return fmt.Errorf("create workflow store: %w", err)
+	}
 	var entries []workflowEntry
 	for name, w := range m.workflows {
 		var stepNames []string
@@ -586,21 +596,30 @@ func (m *Manager) save() {
 		}
 		entries = append(entries, workflowEntry{Name: name, Steps: stepNames})
 	}
-	data, _ := json.MarshalIndent(entries, "", "  ")
-	_ = os.WriteFile(filepath.Join(m.storePath, "workflows.json"), data, 0o600)
+	data, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal workflows: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(m.storePath, "workflows.json"), data, 0o600); err != nil {
+		return fmt.Errorf("write workflows: %w", err)
+	}
+	return nil
 }
 
-func (m *Manager) load() {
+func (m *Manager) load() error {
 	if m.storePath == "" {
-		return
+		return nil
 	}
 	data, err := os.ReadFile(filepath.Join(m.storePath, "workflows.json"))
 	if err != nil {
-		return
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read workflows: %w", err)
 	}
 	var entries []workflowEntry
-	if json.Unmarshal(data, &entries) != nil {
-		return
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return fmt.Errorf("unmarshal workflows: %w", err)
 	}
 	for _, e := range entries {
 		var steps []*WorkflowStep
@@ -614,4 +633,5 @@ func (m *Manager) load() {
 		}
 		m.workflows[e.Name] = NewWorkflow(e.Name, steps)
 	}
+	return nil
 }

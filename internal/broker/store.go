@@ -103,9 +103,9 @@ func (s *ConnectionStore) Get(name string) (*SavedBroker, error) {
 		return nil, err
 	}
 
-	for _, e := range s.entries {
-		if e.Name == name {
-			return &e, nil
+	for i := range s.entries {
+		if s.entries[i].Name == name {
+			return &s.entries[i], nil
 		}
 	}
 	return nil, fmt.Errorf("broker connection %q not found", name)
@@ -118,5 +118,7 @@ func (s *ConnectionStore) List() ([]SavedBroker, error) {
 	if err := s.load(); err != nil {
 		return nil, err
 	}
-	return s.entries, nil
+	result := make([]SavedBroker, len(s.entries))
+	copy(result, s.entries)
+	return result, nil
 }

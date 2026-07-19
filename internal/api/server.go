@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/NAEOS-foundation/naeos/internal/ai"
 	"github.com/NAEOS-foundation/naeos/internal/artifacts"
 	"github.com/NAEOS-foundation/naeos/internal/audit"
 	"github.com/NAEOS-foundation/naeos/internal/cloud"
@@ -24,6 +25,7 @@ import (
 	"github.com/NAEOS-foundation/naeos/internal/mcp"
 	"github.com/NAEOS-foundation/naeos/internal/monitoring"
 	"github.com/NAEOS-foundation/naeos/internal/pluginhost"
+	"github.com/NAEOS-foundation/naeos/internal/profiles"
 	"github.com/NAEOS-foundation/naeos/internal/specification/parser"
 	"github.com/NAEOS-foundation/naeos/internal/version"
 	naeosws "github.com/NAEOS-foundation/naeos/internal/websocket"
@@ -61,12 +63,17 @@ type Server struct {
 }
 
 type pipelineRun struct {
-	ID        string `json:"id"`
-	Status    string `json:"status"`
-	Project   string `json:"project"`
-	Modules   int    `json:"modules"`
-	Services  int    `json:"services"`
-	CreatedAt string `json:"created_at"`
+	ID          string   `json:"id"`
+	Status      string   `json:"status"`
+	Project     string   `json:"project"`
+	Target      string   `json:"target,omitempty"`
+	Modules     int      `json:"modules"`
+	Services    int      `json:"services"`
+	ModuleNames []string `json:"module_names,omitempty"`
+	CreatedAt   string   `json:"created_at"`
+	CompletedAt string   `json:"completed_at,omitempty"`
+	Duration    string   `json:"duration,omitempty"`
+	Error       string   `json:"error,omitempty"`
 }
 
 type pipelineJob struct {
@@ -176,6 +183,7 @@ func (s *Server) setupRoutes() {
 	s.Router.HandleFunc("/api/v1/specs", s.handleSpecs)
 	s.Router.HandleFunc("/api/v1/specs/validate", s.handleSpecValidate)
 	s.Router.HandleFunc("/api/v1/specs/compile", s.handleSpecCompile)
+	s.Router.HandleFunc("/api/v1/specs/visualize", s.handleSpecVisualize)
 
 	// Pipeline endpoints
 	s.Router.HandleFunc("/api/v1/pipeline/run", s.handlePipelineRun)
@@ -186,6 +194,13 @@ func (s *Server) setupRoutes() {
 
 	// Context endpoints
 	s.Router.HandleFunc("/api/v1/context/generate", s.handleContextGenerate)
+
+	// Profile endpoints
+	s.Router.HandleFunc("/api/v1/profiles", s.handleProfiles)
+	s.Router.HandleFunc("/api/v1/profiles/publish", s.handleProfilePublish)
+	s.Router.HandleFunc("/api/v1/profiles/sync", s.handleProfileSync)
+	s.Router.HandleFunc("/api/v1/profiles/subscribe", s.handleProfileSubscribe)
+	s.Router.HandleFunc("/api/v1/profiles/", s.handleProfileByID)
 
 	// MCP endpoints
 	s.Router.HandleFunc("/api/v1/mcp/message", s.handleMCPMessage)
@@ -205,6 +220,10 @@ func (s *Server) setupRoutes() {
 	s.Router.HandleFunc("/api/v1/version", s.handleVersion)
 	s.Router.HandleFunc("/api/v1/config/schema", s.handleConfigSchema)
 	s.Router.HandleFunc("/api/v1/pipelines", s.handlePipelines)
+
+	// AI endpoints
+	s.Router.HandleFunc("/api/v1/ai/enrich/stream", s.handleAIEnrichStream)
+	s.Router.HandleFunc("/api/v1/ai/explain/stream", s.handleAIExplainStream)
 
 	// OIDC discovery
 	s.Router.HandleFunc("/.well-known/openid-configuration", s.handleOIDCDiscovery)
@@ -490,6 +509,183 @@ func (s *Server) handleSpecCompile(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type vizTreeNode struct {
+	Name     string         `json:"name"`
+	Type     string         `json:"type"`
+	Children []*vizTreeNode `json:"children,omitempty"`
+	Props    map[string]any `json:"props,omitempty"`
+}
+
+type vizEdge struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+	Type string `json:"type"`
+}
+
+func (s *Server) handleSpecVisualize(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		s.writeError(w, http.StatusMethodNotAllowed, "use POST")
+		return
+	}
+	var req struct {
+		Spec string `json:"spec"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Spec == "" {
+		s.writeError(w, http.StatusBadRequest, "spec field required")
+		return
+	}
+
+	doc, err := s.parser.Parse(req.Spec)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "parse error: "+err.Error())
+		return
+	}
+
+	root := &vizTreeNode{
+		Name: doc.Project,
+		Type: "project",
+		Props: map[string]any{
+			"project": doc.Project,
+		},
+	}
+
+	var edges []vizEdge
+
+	// Modules
+	if len(doc.Modules) > 0 {
+		modNode := &vizTreeNode{Name: "Modules", Type: "group"}
+		for _, m := range doc.Modules {
+			child := &vizTreeNode{
+				Name: m.Name,
+				Type: "module",
+				Props: map[string]any{
+					"path":        m.Path,
+					"description": m.Description,
+				},
+			}
+			modNode.Children = append(modNode.Children, child)
+			for _, dep := range m.Dependencies {
+				edges = append(edges, vizEdge{
+					From: m.Name,
+					To:   dep,
+					Type: "depends_on",
+				})
+			}
+		}
+		root.Children = append(root.Children, modNode)
+	}
+
+	// Services
+	if len(doc.Services) > 0 {
+		svcNode := &vizTreeNode{Name: "Services", Type: "group"}
+		for _, svc := range doc.Services {
+			child := &vizTreeNode{
+				Name: svc.Name,
+				Type: "service",
+				Props: map[string]any{
+					"kind":        svc.Kind,
+					"port":        svc.Port,
+					"description": svc.Description,
+				},
+			}
+			if len(svc.Endpoints) > 0 {
+				epNode := &vizTreeNode{Name: "Endpoints", Type: "group"}
+				for _, ep := range svc.Endpoints {
+					epNode.Children = append(epNode.Children, &vizTreeNode{
+						Name: ep.Path,
+						Type: "endpoint",
+						Props: map[string]any{
+							"method": ep.Method,
+							"action": ep.Action,
+						},
+					})
+				}
+				child.Children = append(child.Children, epNode)
+			}
+			svcNode.Children = append(svcNode.Children, child)
+		}
+		root.Children = append(root.Children, svcNode)
+	}
+
+	// Architecture
+	if doc.Architecture != nil {
+		archNode := &vizTreeNode{
+			Name: "Architecture",
+			Type: "architecture",
+			Props: map[string]any{
+				"pattern":     doc.Architecture.Pattern,
+				"description": doc.Architecture.Description,
+			},
+		}
+		if len(doc.Architecture.Principles) > 0 {
+			pNode := &vizTreeNode{Name: "Principles", Type: "group"}
+			for _, p := range doc.Architecture.Principles {
+				pNode.Children = append(pNode.Children, &vizTreeNode{
+					Name: p, Type: "principle",
+				})
+			}
+			archNode.Children = append(archNode.Children, pNode)
+		}
+		root.Children = append(root.Children, archNode)
+	}
+
+	// Deployment
+	if doc.Deployment != nil {
+		depNode := &vizTreeNode{
+			Name: "Deployment",
+			Type: "deployment",
+			Props: map[string]any{
+				"strategy": doc.Deployment.Strategy,
+			},
+		}
+		if len(doc.Deployment.Environments) > 0 {
+			envNode := &vizTreeNode{Name: "Environments", Type: "group"}
+			for _, e := range doc.Deployment.Environments {
+				envNode.Children = append(envNode.Children, &vizTreeNode{Name: e, Type: "environment"})
+			}
+			depNode.Children = append(depNode.Children, envNode)
+		}
+		root.Children = append(root.Children, depNode)
+	}
+
+	// Testing
+	if doc.Testing != nil {
+		root.Children = append(root.Children, &vizTreeNode{
+			Name: "Testing",
+			Type: "testing",
+			Props: map[string]any{
+				"strategy": doc.Testing.Strategy,
+				"coverage": doc.Testing.Coverage,
+			},
+		})
+	}
+
+	// Generation
+	if doc.Generation != nil {
+		genNode := &vizTreeNode{
+			Name: "Generation",
+			Type: "generation",
+			Props: map[string]any{
+				"output_dir": doc.Generation.OutputDir,
+				"module_dir": doc.Generation.ModuleDir,
+			},
+		}
+		if len(doc.Generation.Languages) > 0 {
+			langNode := &vizTreeNode{Name: "Languages", Type: "group"}
+			for _, l := range doc.Generation.Languages {
+				langNode.Children = append(langNode.Children, &vizTreeNode{Name: l, Type: "language"})
+			}
+			genNode.Children = append(genNode.Children, langNode)
+		}
+		root.Children = append(root.Children, genNode)
+	}
+
+	s.writeJSON(w, http.StatusOK, map[string]any{
+		"tree":  root,
+		"edges": edges,
+	})
+}
+
 func (s *Server) handlePipelineRun(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		s.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -521,28 +717,49 @@ func (s *Server) handlePipelineRun(w http.ResponseWriter, r *http.Request) {
 	s.jobsMu.Unlock()
 
 	go func() {
-		b := s.bundle.GenerateFromSpec(doc)
+		startTime := time.Now()
+
+		var modNames []string
+		for _, m := range doc.Modules {
+			modNames = append(modNames, m.Name)
+		}
+
 		run := pipelineRun{
-			ID:        jobID,
-			Status:    "completed",
-			Project:   doc.Project,
-			Modules:   len(doc.Modules),
-			Services:  len(doc.Services),
-			CreatedAt: time.Now().Format(time.RFC3339),
-		}
-		s.pipelinesMu.Lock()
-		s.pipelines = append(s.pipelines, run)
-		s.pipelinesMu.Unlock()
-
-		if s.db != nil {
-			_, _ = s.db.Exec("INSERT INTO pipeline_runs (id, status, project, modules, services, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-				run.ID, run.Status, run.Project, run.Modules, run.Services, run.CreatedAt)
+			ID:          jobID,
+			Status:      "completed",
+			Project:     doc.Project,
+			Target:      req.Target,
+			Modules:     len(doc.Modules),
+			Services:    len(doc.Services),
+			ModuleNames: modNames,
+			CreatedAt:   startTime.Format(time.RFC3339),
 		}
 
-		s.jobsMu.Lock()
-		job.Status = "completed"
-		s.jobsMu.Unlock()
-		_ = b
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					run.Status = "failed"
+					run.Error = fmt.Sprintf("panic: %v", r)
+				}
+				run.CompletedAt = time.Now().Format(time.RFC3339)
+				run.Duration = time.Since(startTime).Round(time.Millisecond).String()
+
+				s.pipelinesMu.Lock()
+				s.pipelines = append(s.pipelines, run)
+				s.pipelinesMu.Unlock()
+
+				if s.db != nil {
+					_, _ = s.db.Exec("INSERT INTO pipeline_runs (id, status, project, modules, services, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+						run.ID, run.Status, run.Project, run.Modules, run.Services, run.CreatedAt)
+				}
+
+				s.jobsMu.Lock()
+				job.Status = run.Status
+				job.Error = run.Error
+				s.jobsMu.Unlock()
+			}()
+			_ = s.bundle.GenerateFromSpec(doc)
+		}()
 	}()
 
 	s.writeJSON(w, http.StatusAccepted, map[string]any{
@@ -1008,6 +1225,95 @@ func (s *Server) handlePluginByName(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) handleAIEnrichStream(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		s.writeError(w, http.StatusMethodNotAllowed, "use POST")
+		return
+	}
+
+	var req struct {
+		Spec    string `json:"spec"`
+		Model   string `json:"model,omitempty"`
+		APIKey  string `json:"api_key,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON: %v", err))
+		return
+	}
+	if req.Spec == "" {
+		s.writeError(w, http.StatusBadRequest, "spec is required")
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	cfg := ai.LLMConfig{
+		Provider: ai.ProviderOpenAI,
+		Model:    req.Model,
+		APIKey:   req.APIKey,
+	}
+	if cfg.Model == "" {
+		cfg.Model = "gpt-4o-mini"
+	}
+	if cfg.APIKey == "" {
+		if k := os.Getenv("OPENAI_API_KEY"); k != "" {
+			cfg.APIKey = k
+		}
+	}
+
+	svc := ai.NewLLMService(cfg)
+	if err := svc.StreamEnrichSpec(req.Spec, w); err != nil {
+		fmt.Fprintf(w, "event: error\ndata: {\"message\":%q}\n\n", err.Error())
+	}
+}
+
+func (s *Server) handleAIExplainStream(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		s.writeError(w, http.StatusMethodNotAllowed, "use POST")
+		return
+	}
+
+	var req struct {
+		Spec         string `json:"spec"`
+		Architecture string `json:"architecture"`
+		Model        string `json:"model,omitempty"`
+		APIKey       string `json:"api_key,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON: %v", err))
+		return
+	}
+	if req.Spec == "" {
+		s.writeError(w, http.StatusBadRequest, "spec is required")
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	cfg := ai.LLMConfig{
+		Provider: ai.ProviderOpenAI,
+		Model:    req.Model,
+		APIKey:   req.APIKey,
+	}
+	if cfg.Model == "" {
+		cfg.Model = "gpt-4o-mini"
+	}
+	if cfg.APIKey == "" {
+		if k := os.Getenv("OPENAI_API_KEY"); k != "" {
+			cfg.APIKey = k
+		}
+	}
+
+	svc := ai.NewLLMService(cfg)
+	if err := svc.StreamExplainArchitecture(req.Spec, req.Architecture, w); err != nil {
+		fmt.Fprintf(w, "event: error\ndata: {\"message\":%q}\n\n", err.Error())
+	}
+}
+
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusOK, map[string]string{
 		"version":  version.String(),
@@ -1031,9 +1337,27 @@ func (s *Server) handleConfigSchema(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePipelines(w http.ResponseWriter, r *http.Request) {
-	s.pipelinesMu.RLock()
+	q := r.URL.Query()
+	statusFilter := q.Get("status")
+	projectSearch := strings.ToLower(q.Get("search"))
 	offset, limit := parsePagination(r)
-	total := len(s.pipelines)
+	if limit <= 0 {
+		limit = 20
+	}
+
+	s.pipelinesMu.RLock()
+	filtered := make([]pipelineRun, 0, len(s.pipelines))
+	for _, p := range s.pipelines {
+		if statusFilter != "" && p.Status != statusFilter {
+			continue
+		}
+		if projectSearch != "" && !strings.Contains(strings.ToLower(p.Project), projectSearch) {
+			continue
+		}
+		filtered = append(filtered, p)
+	}
+	total := len(filtered)
+
 	start := offset
 	if start > total {
 		start = total
@@ -1042,11 +1366,17 @@ func (s *Server) handlePipelines(w http.ResponseWriter, r *http.Request) {
 	if end > total {
 		end = total
 	}
-	pipelines := make([]pipelineRun, len(s.pipelines[start:end]))
-	copy(pipelines, s.pipelines[start:end])
+	result := make([]pipelineRun, len(filtered[start:end]))
+	copy(result, filtered[start:end])
 	s.pipelinesMu.RUnlock()
+
+	// Reverse so newest first
+	for i, j := 0, len(result)-1; i < j; i, j = i+1, j-1 {
+		result[i], result[j] = result[j], result[i]
+	}
+
 	s.writeJSON(w, http.StatusOK, map[string]any{
-		"pipelines": pipelines,
+		"pipelines": result,
 		"total":     total,
 		"page":      offset/limit + 1,
 		"limit":     limit,

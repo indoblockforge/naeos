@@ -322,6 +322,63 @@ func (s *LLMService) callAnthropic(prompt string) (string, error) {
 	return result.Content[0].Text, nil
 }
 
+func (s *LLMService) StreamEnrichSpec(specContent string, w io.Writer) error {
+	prompt := s.buildEnrichPrompt(specContent)
+	return s.streamLLM(prompt, w)
+}
+
+func (s *LLMService) StreamExplainArchitecture(specContent, architecture string, w io.Writer) error {
+	prompt := s.buildExplainPrompt(specContent, architecture)
+	return s.streamLLM(prompt, w)
+}
+
+func (s *LLMService) streamLLM(prompt string, w io.Writer) error {
+	flusher, flushable := w.(http.Flusher)
+
+	writeEvent := func(event, data string) error {
+		_, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, data)
+		if flushable {
+			flusher.Flush()
+		}
+		return err
+	}
+
+	if err := writeEvent("start", "{}"); err != nil {
+		return err
+	}
+
+	result, err := s.callLLM(prompt)
+	if err != nil {
+		writeEvent("error", fmt.Sprintf(`{"message":"%s"}`, err.Error()))
+		return err
+	}
+
+	words := strings.Fields(result)
+	var buf strings.Builder
+	for _, word := range words {
+		buf.WriteString(word)
+		buf.WriteByte(' ')
+		chunk := strings.TrimSpace(buf.String())
+		if len(chunk) >= 80 || word == words[len(words)-1] {
+			escaped := strings.ReplaceAll(chunk, "\n", "\\n")
+			escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+			if err := writeEvent("chunk", fmt.Sprintf(`{"text":"%s"}`, escaped)); err != nil {
+				return err
+			}
+			buf.Reset()
+		}
+	}
+
+	if buf.Len() > 0 {
+		remaining := strings.TrimSpace(buf.String())
+		escaped := strings.ReplaceAll(remaining, "\n", "\\n")
+		escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+		writeEvent("chunk", fmt.Sprintf(`{"text":"%s"}`, escaped))
+	}
+
+	return writeEvent("done", `{"status":"completed"}`)
+}
+
 func cleanJSON(s string) string {
 	s = strings.TrimSpace(s)
 	if strings.HasPrefix(s, "```json") {

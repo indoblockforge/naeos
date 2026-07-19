@@ -86,7 +86,7 @@ func (r *Registry) loadBuiltin() {
 }
 
 func (r *Registry) Register(p *Profile) {
-	r.profiles[p.ID] = p
+	r.profiles[p.ID] = p.Clone()
 }
 
 func (r *Registry) Get(id string) (*Profile, bool) {
@@ -127,6 +127,17 @@ func (r *Registry) ByIndustry(industry string) []Profile {
 		}
 	}
 	return result
+}
+
+func (p *Profile) Clone() *Profile {
+	out := *p
+	out.Modules = make([]ModuleTemplate, len(p.Modules))
+	copy(out.Modules, p.Modules)
+	out.Services = make([]ServiceTemplate, len(p.Services))
+	copy(out.Services, p.Services)
+	out.Tags = make([]string, len(p.Tags))
+	copy(out.Tags, p.Tags)
+	return &out
 }
 
 func (r *Registry) ToSpecYAML(p *Profile) string {

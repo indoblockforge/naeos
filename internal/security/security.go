@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/NAEOS-foundation/naeos/internal/lint"
 )
 
 var scanExtensions = map[string]bool{

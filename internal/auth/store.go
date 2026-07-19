@@ -121,5 +121,7 @@ func (s *UserStore) List() ([]SavedUser, error) {
 	if err := s.load(); err != nil {
 		return nil, err
 	}
-	return s.entries, nil
+	result := make([]SavedUser, len(s.entries))
+	copy(result, s.entries)
+	return result, nil
 }

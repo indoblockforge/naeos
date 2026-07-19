@@ -136,8 +136,8 @@ func (b *BaseDatabase) exec(_ string, _ ...any) (Result, error) {
 	if !b.connected {
 		return Result{}, fmt.Errorf("not connected")
 	}
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	return Result{RowsAffected: 1}, nil
 }
 

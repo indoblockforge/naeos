@@ -86,6 +86,7 @@ func (r *RealRabbitMQ) Publish(channel string, msg *Message) error {
 	}
 
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	queue, ok := r.queues[channel]
 	if !ok {
 		var err error
@@ -93,12 +94,10 @@ func (r *RealRabbitMQ) Publish(channel string, msg *Message) error {
 			channel, true, false, false, false, nil,
 		)
 		if err != nil {
-			r.mu.Unlock()
 			return fmt.Errorf("declare queue %s: %w", channel, err)
 		}
 		r.queues[channel] = queue
 	}
-	r.mu.Unlock()
 
 	data := msg.Payload
 	if data == nil {
@@ -122,6 +121,7 @@ func (r *RealRabbitMQ) Subscribe(channel string, handler MessageHandler) error {
 	}
 
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	queue, ok := r.queues[channel]
 	if !ok {
 		var err error
@@ -129,12 +129,10 @@ func (r *RealRabbitMQ) Subscribe(channel string, handler MessageHandler) error {
 			channel, true, false, false, false, nil,
 		)
 		if err != nil {
-			r.mu.Unlock()
 			return fmt.Errorf("declare queue %s: %w", channel, err)
 		}
 		r.queues[channel] = queue
 	}
-	r.mu.Unlock()
 
 	deliveries, err := r.channel.Consume(
 		queue.Name, "", false, false, false, false, nil,

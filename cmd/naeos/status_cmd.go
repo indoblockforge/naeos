@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cfgpkg "github.com/NAEOS-foundation/naeos/pkg/config"
 	"github.com/NAEOS-foundation/naeos/internal/pipelinecache"
 	"github.com/NAEOS-foundation/naeos/internal/version"
+	cfgpkg "github.com/NAEOS-foundation/naeos/pkg/config"
 )
 
 func newStatusCommand() *cobra.Command {
@@ -38,34 +38,34 @@ Example:
 				return fmt.Errorf("failed to load config: %w", err)
 			}
 
-	startTime := time.Now()
+			startTime := time.Now()
 
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
 
-	cacheDir := fileCfg.Pipeline.OutputDir
-	if cacheDir == "" {
-		cacheDir = ".naeos/cache"
-	}
-	cache := pipelinecache.New(cacheDir, 100)
-	cacheStats := cache.Stats()
+			cacheDir := fileCfg.Pipeline.OutputDir
+			if cacheDir == "" {
+				cacheDir = ".naeos/cache"
+			}
+			cache := pipelinecache.New(cacheDir, 100)
+			cacheStats := cache.Stats()
 
 			type statusOutput struct {
-				Config     string            `json:"config" yaml:"config"`
-				Pipeline   string            `json:"pipeline" yaml:"pipeline"`
-				Mode       string            `json:"mode" yaml:"mode"`
-				OutputDir  string            `json:"output_dir" yaml:"output_dir"`
-				Languages  []string          `json:"languages" yaml:"languages"`
-				Verbose    bool              `json:"verbose" yaml:"verbose"`
-				Version    string            `json:"version" yaml:"version"`
-				GoVersion  string            `json:"go_version" yaml:"go_version"`
-				Platform   string            `json:"platform" yaml:"platform"`
-				StartTime  string            `json:"start_time" yaml:"start_time"`
-				Uptime     string            `json:"uptime" yaml:"uptime"`
-				Goroutines int               `json:"goroutines" yaml:"goroutines"`
-				AllocMB    float64           `json:"alloc_mb" yaml:"alloc_mb"`
+				Config     string                   `json:"config" yaml:"config"`
+				Pipeline   string                   `json:"pipeline" yaml:"pipeline"`
+				Mode       string                   `json:"mode" yaml:"mode"`
+				OutputDir  string                   `json:"output_dir" yaml:"output_dir"`
+				Languages  []string                 `json:"languages" yaml:"languages"`
+				Verbose    bool                     `json:"verbose" yaml:"verbose"`
+				Version    string                   `json:"version" yaml:"version"`
+				GoVersion  string                   `json:"go_version" yaml:"go_version"`
+				Platform   string                   `json:"platform" yaml:"platform"`
+				StartTime  string                   `json:"start_time" yaml:"start_time"`
+				Uptime     string                   `json:"uptime" yaml:"uptime"`
+				Goroutines int                      `json:"goroutines" yaml:"goroutines"`
+				AllocMB    float64                  `json:"alloc_mb" yaml:"alloc_mb"`
 				Cache      pipelinecache.CacheStats `json:"cache" yaml:"cache"`
-				CheckedAt  string            `json:"checked_at" yaml:"checked_at"`
+				CheckedAt  string                   `json:"checked_at" yaml:"checked_at"`
 			}
 
 			status := statusOutput{

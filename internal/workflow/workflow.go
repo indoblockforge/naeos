@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -350,12 +351,16 @@ func (w *Workflow) ExecuteParallelGroup(ctx context.Context, groups []*ParallelS
 		wg.Wait()
 		close(errCh)
 
-			for err := range errCh {
+		var errs []error
+		for err := range errCh {
 			if err != nil {
-				w.Context.Error = err
-				_ = w.Machine.Trigger("error")
-				return err
+				errs = append(errs, err)
 			}
+		}
+		if len(errs) > 0 {
+			w.Context.Error = errs[0]
+			_ = w.Machine.Trigger("error")
+			return fmt.Errorf("parallel steps failed: %w", errors.Join(errs...))
 		}
 
 		_ = w.Machine.Trigger("next")
@@ -525,13 +530,11 @@ func NewManagerWithPath(storePath string) *Manager {
 	return m
 }
 
-func (m *Manager) Register(name string, workflow *Workflow) {
+func (m *Manager) Register(name string, workflow *Workflow) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.workflows[name] = workflow
-	if err := m.save(); err != nil {
-		fmt.Fprintf(os.Stderr, "workflow: save error: %v\n", err)
-	}
+	return m.save()
 }
 
 func (m *Manager) Get(name string) (*Workflow, bool) {
@@ -541,13 +544,11 @@ func (m *Manager) Get(name string) (*Workflow, bool) {
 	return workflow, ok
 }
 
-func (m *Manager) Remove(name string) {
+func (m *Manager) Remove(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.workflows, name)
-	if err := m.save(); err != nil {
-		fmt.Fprintf(os.Stderr, "workflow: save error: %v\n", err)
-	}
+	return m.save()
 }
 
 func (m *Manager) List() []string {

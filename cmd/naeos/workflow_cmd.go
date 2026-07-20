@@ -106,7 +106,9 @@ func newWorkflowCreateCommand() *cobra.Command {
 			}
 
 			w := workflow.NewWorkflow(name, workflowSteps)
-			mgr.Register(name, w)
+			if err := mgr.Register(name, w); err != nil {
+				return fmt.Errorf("register workflow: %w", err)
+			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "Created workflow '%s' with %d steps: %s\n",
 				name, len(steps), strings.Join(steps, ", "))

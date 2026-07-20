@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/spf13/cobra"
 
 	"github.com/NAEOS-foundation/naeos/internal/api"
@@ -32,18 +34,34 @@ func newDashboardCommand() *cobra.Command {
 			mux.Router.HandleFunc("/", dash.ServeHTTP)
 			mux.Router.HandleFunc("/ws", wsServer.HandleWebSocket)
 
+			broadcaster := ws.NewEventBroadcaster(wsServer)
+			al := dashboard.NewActivityLog(500)
+			al.SetLogCallback(func(entry dashboard.LogEntry) {
+				level := string(entry.Level)
+				if level == "" {
+					level = "info"
+				}
+				broadcaster.LogMessage(level, entry.Message)
+			})
+
+			observer := ws.NewWSObserver(broadcaster)
+			mux.SetPipelineObserver(observer)
+
 			go func() {
-				broadcaster := ws.NewEventBroadcaster(wsServer)
-				al := dashboard.NewActivityLog(500)
-				al.SetLogCallback(func(entry dashboard.LogEntry) {
-					level := string(entry.Level)
-					if level == "" {
-						level = "info"
-					}
-					broadcaster.LogMessage(level, entry.Message)
-				})
-				_ = al
-				_ = broadcaster
+				ticker := time.NewTicker(5 * time.Second)
+				defer ticker.Stop()
+				for range ticker.C {
+					stats := dashboard.GetStats()
+					wsServer.Broadcast("stats_update", stats)
+				}
+			}()
+
+			go func() {
+				ticker := time.NewTicker(30 * time.Second)
+				defer ticker.Stop()
+				for range ticker.C {
+					al.Add(dashboard.LevelInfo, "Dashboard running")
+				}
 			}()
 
 			return mux.Start()

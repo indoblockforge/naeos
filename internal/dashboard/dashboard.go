@@ -155,7 +155,7 @@ type ActivityLog struct {
 	entries []LogEntry
 	nextID  int64
 	maxLen  int
-	onLog  func(LogEntry)
+	onLog   func(LogEntry)
 }
 
 func (al *ActivityLog) SetLogCallback(fn func(LogEntry)) {

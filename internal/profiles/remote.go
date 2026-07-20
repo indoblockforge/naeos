@@ -2,6 +2,7 @@ package profiles
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -35,7 +36,7 @@ func (rc *RemoteClient) Publish(profiles []Profile) error {
 		return fmt.Errorf("marshal profiles: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", rc.registry.URL+"/profiles", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), "POST", rc.registry.URL+"/profiles", bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("create request: %w", err)
 	}
@@ -58,7 +59,7 @@ func (rc *RemoteClient) Publish(profiles []Profile) error {
 }
 
 func (rc *RemoteClient) Subscribe() ([]Profile, error) {
-	req, err := http.NewRequest("GET", rc.registry.URL+"/profiles", nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", rc.registry.URL+"/profiles", nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}

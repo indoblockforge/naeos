@@ -164,9 +164,9 @@ type CacheStats struct {
 }
 
 type CacheSummary struct {
-	Key      string    `json:"key"`
-	HitCount int       `json:"hit_count"`
-	Age      string    `json:"age"`
+	Key      string `json:"key"`
+	HitCount int    `json:"hit_count"`
+	Age      string `json:"age"`
 }
 
 func (c *Cache) Stats() CacheStats {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -209,7 +210,9 @@ Example:
 			}
 			defer func() { _ = mgr.Cleanup() }()
 
-			result, err := mgr.Execute(context.Background(), name, action, params)
+			execCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			defer cancel()
+			result, err := mgr.Execute(execCtx, name, action, params)
 			if err != nil {
 				return err
 			}

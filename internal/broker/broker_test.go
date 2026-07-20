@@ -765,6 +765,70 @@ func TestConnectionPoolMetrics(t *testing.T) {
 	}
 }
 
+func TestConnectionPoolAllUnhealthy(t *testing.T) {
+	r1 := NewRedis()
+	r2 := NewRedis()
+	r1.Connect(&Config{})
+	r2.Connect(&Config{})
+	pool := NewConnectionPool(r1, r2)
+
+	pool.SetHealthy(0, false)
+	pool.SetHealthy(1, false)
+	if pool.HealthyCount() != 0 {
+		t.Errorf("expected 0 healthy, got %d", pool.HealthyCount())
+	}
+	if got := pool.Next(); got != nil {
+		t.Error("expected nil when all brokers unhealthy")
+	}
+}
+
+func TestConnectionPoolConcurrentNext(t *testing.T) {
+	brokers := make([]Broker, 5)
+	for i := range brokers {
+		brokers[i] = NewRedis()
+	}
+	pool := NewConnectionPool(brokers...)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 10; j++ {
+				if b := pool.Next(); b == nil {
+					t.Error("unexpected nil from Next()")
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	metrics := pool.PoolMetrics()
+	if metrics.NextCalls <= 0 {
+		t.Error("expected non-zero NextCalls")
+	}
+}
+
+func TestConnectionPoolNextRoundRobinOrder(t *testing.T) {
+	r1 := NewRedis()
+	r2 := NewRedis()
+	r3 := NewRedis()
+	pool := NewConnectionPool(r1, r2, r3)
+
+	seen := make(map[Broker]int)
+	for i := 0; i < 6; i++ {
+		b := pool.Next()
+		seen[b]++
+	}
+	if len(seen) != 3 {
+		t.Errorf("expected 3 unique brokers, got %d", len(seen))
+	}
+	for _, count := range seen {
+		if count != 2 {
+			t.Errorf("expected each broker 2 times, got %d", count)
+		}
+	}
+}
+
 func TestConnectionPoolHealthCheckTracksMaxLifetime(t *testing.T) {
 	b := &mockBroker{name: "test"}
 	pool := NewConnectionPool(b)

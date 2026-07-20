@@ -29,6 +29,7 @@ import (
 	"github.com/NAEOS-foundation/naeos/internal/specification/parser"
 	"github.com/NAEOS-foundation/naeos/internal/version"
 	naeosws "github.com/NAEOS-foundation/naeos/internal/websocket"
+	"github.com/NAEOS-foundation/naeos/pkg/pipeline"
 )
 
 // Server is the main HTTP API server for the NAEOS platform.
@@ -60,6 +61,8 @@ type Server struct {
 	wsServer        *naeosws.Server
 	mcpServer       *mcp.Server
 	db              database.Database
+	profiles        *profiles.Registry
+	pipelineObserver pipeline.PipelineObserver
 }
 
 type pipelineRun struct {
@@ -153,6 +156,7 @@ func NewServer(addr string, auth *AuthConfig) *Server {
 		store:        store,
 		pipelineJobs: make(map[string]*pipelineJob),
 		plugins:      pluginhost.NewManager(".naeos/plugins"),
+		profiles:     profiles.NewRegistry(),
 	}
 
 	if auth != nil && auth.JWTSecret != "" {
@@ -165,7 +169,9 @@ func NewServer(addr string, auth *AuthConfig) *Server {
 
 	s.metrics = metrics
 	s.metricsRegistry = metrics.Registry()
+	s.pipelineObserver = monitoring.NewMetricsObserver(metrics)
 	s.auditor = audit.NewMemoryAuditor()
+	s.profiles = profiles.NewRegistry()
 	s.setupRoutes()
 	return s
 }
@@ -237,6 +243,12 @@ func (s *Server) SetWebSocketServer(ws *naeosws.Server) {
 // SetDatabase attaches a database to the API server for persistence.
 func (s *Server) SetDatabase(db database.Database) {
 	s.db = db
+}
+
+// SetPipelineObserver attaches a pipeline observer, chaining with metrics recording.
+func (s *Server) SetPipelineObserver(obs pipeline.PipelineObserver) {
+	metricsObs := monitoring.NewMetricsObserver(s.metrics)
+	s.pipelineObserver = pipeline.ChainObservers(obs, metricsObs)
 }
 
 // RegisterAPIKey registers an API key with its associated rate limit.
@@ -719,6 +731,10 @@ func (s *Server) handlePipelineRun(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		startTime := time.Now()
 
+		if s.pipelineObserver != nil {
+			s.pipelineObserver.OnPipelineStart(jobID)
+		}
+
 		var modNames []string
 		for _, m := range doc.Modules {
 			modNames = append(modNames, m.Name)
@@ -743,6 +759,15 @@ func (s *Server) handlePipelineRun(w http.ResponseWriter, r *http.Request) {
 				}
 				run.CompletedAt = time.Now().Format(time.RFC3339)
 				run.Duration = time.Since(startTime).Round(time.Millisecond).String()
+
+				if s.pipelineObserver != nil {
+					switch run.Status {
+					case "completed":
+						s.pipelineObserver.OnPipelineComplete(jobID, run.Modules+run.Services, run.Duration)
+					case "failed":
+						s.pipelineObserver.OnPipelineFailed(jobID, run.Error)
+					}
+				}
 
 				s.pipelinesMu.Lock()
 				s.pipelines = append(s.pipelines, run)
@@ -1225,6 +1250,109 @@ func (s *Server) handlePluginByName(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) handleProfiles(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		s.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	query := r.URL.Query().Get("q")
+	var result []profiles.Profile
+	if query != "" {
+		result = s.profiles.Search(query)
+	} else {
+		result = s.profiles.List()
+	}
+	s.writeJSON(w, http.StatusOK, map[string]any{
+		"profiles": result,
+		"count":    len(result),
+	})
+}
+
+func (s *Server) handleProfilePublish(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		s.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var p profiles.Profile
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if p.ID == "" || p.Name == "" {
+		s.writeError(w, http.StatusBadRequest, "id and name are required")
+		return
+	}
+	s.profiles.Register(&p)
+	s.writeJSON(w, http.StatusCreated, map[string]any{
+		"message": "profile published",
+		"id":      p.ID,
+	})
+}
+
+func (s *Server) handleProfileSync(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		s.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var req struct {
+		Profiles []profiles.Profile `json:"profiles"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	for _, p := range req.Profiles {
+		s.profiles.Register(&p)
+	}
+	s.writeJSON(w, http.StatusOK, map[string]any{
+		"message": "profiles synced",
+		"count":   len(req.Profiles),
+	})
+}
+
+func (s *Server) handleProfileSubscribe(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		s.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var req struct {
+		RegistryURL string `json:"registry_url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.RegistryURL == "" {
+		s.writeError(w, http.StatusBadRequest, "registry_url is required")
+		return
+	}
+	s.writeJSON(w, http.StatusOK, map[string]any{
+		"message":      "subscription registered",
+		"registry_url": req.RegistryURL,
+	})
+}
+
+func (s *Server) handleProfileByID(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/api/v1/profiles/")
+	if id == "" {
+		s.writeError(w, http.StatusBadRequest, errors.New(errors.ErrValidation, "profile id is required").Error())
+		return
+	}
+	switch r.Method {
+	case "GET":
+		p, ok := s.profiles.Get(id)
+		if !ok {
+			s.writeError(w, http.StatusNotFound, fmt.Sprintf("profile %s not found", id))
+			return
+		}
+		s.writeJSON(w, http.StatusOK, p)
+	case "DELETE":
+		s.writeError(w, http.StatusMethodNotAllowed, "delete not supported, use sync to update")
+	default:
+		s.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
 func (s *Server) handleAIEnrichStream(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		s.writeError(w, http.StatusMethodNotAllowed, "use POST")
@@ -1232,9 +1360,9 @@ func (s *Server) handleAIEnrichStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Spec    string `json:"spec"`
-		Model   string `json:"model,omitempty"`
-		APIKey  string `json:"api_key,omitempty"`
+		Spec   string `json:"spec"`
+		Model  string `json:"model,omitempty"`
+		APIKey string `json:"api_key,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON: %v", err))

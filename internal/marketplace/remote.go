@@ -50,7 +50,9 @@ type RemotePluginList struct {
 
 func (r *RemoteRegistry) List() ([]RemotePlugin, error) {
 	url := r.baseURL + "/plugins"
-	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -199,7 +201,9 @@ func (r *RemoteRegistry) resolvePlugin(name, version string) (*RemotePlugin, err
 }
 
 func (r *RemoteRegistry) downloadFile(url, destPath string) error {
-	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return fmt.Errorf("create request: %w", err)
 	}

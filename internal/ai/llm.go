@@ -231,7 +231,9 @@ func (s *LLMService) callOpenAI(prompt string) (string, error) {
 	}
 	url := baseURL + "/v1/chat/completions"
 
-	req, err := http.NewRequestWithContext(context.Background(), "POST", url, bytes.NewReader(body))
+	ctx, cancel := context.WithTimeout(context.Background(), s.config.Timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -287,7 +289,9 @@ func (s *LLMService) callAnthropic(prompt string) (string, error) {
 	}
 	url := baseURL + "/v1/messages"
 
-	req, err := http.NewRequestWithContext(context.Background(), "POST", url, bytes.NewReader(body))
+	ctx, cancel := context.WithTimeout(context.Background(), s.config.Timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -349,7 +353,7 @@ func (s *LLMService) streamLLM(prompt string, w io.Writer) error {
 
 	result, err := s.callLLM(prompt)
 	if err != nil {
-		writeEvent("error", fmt.Sprintf(`{"message":"%s"}`, err.Error()))
+		_ = writeEvent("error", fmt.Sprintf(`{"message":"%s"}`, err.Error()))
 		return err
 	}
 
@@ -373,7 +377,7 @@ func (s *LLMService) streamLLM(prompt string, w io.Writer) error {
 		remaining := strings.TrimSpace(buf.String())
 		escaped := strings.ReplaceAll(remaining, "\n", "\\n")
 		escaped = strings.ReplaceAll(escaped, `"`, `\"`)
-		writeEvent("chunk", fmt.Sprintf(`{"text":"%s"}`, escaped))
+		_ = writeEvent("chunk", fmt.Sprintf(`{"text":"%s"}`, escaped))
 	}
 
 	return writeEvent("done", `{"status":"completed"}`)

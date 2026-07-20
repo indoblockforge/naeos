@@ -162,8 +162,8 @@ func (b *BaseDatabase) begin() (Transaction, error) {
 		return nil, fmt.Errorf("not connected")
 	}
 	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.txInProgress = true
-	b.mu.Unlock()
 	return &BaseTransaction{db: b}, nil
 }
 

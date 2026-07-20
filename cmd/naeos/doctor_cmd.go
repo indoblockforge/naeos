@@ -314,7 +314,9 @@ func checkSpec(specFile string) checkResult {
 
 func checkNetwork() checkResult {
 	client := &http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequestWithContext(context.Background(), "GET", "https://github.com", nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://github.com", nil)
 	if err != nil {
 		return checkResult{Name: "Network", Status: "warn", Detail: "cannot create request"}
 	}
@@ -322,7 +324,7 @@ func checkNetwork() checkResult {
 	if err != nil {
 		return checkResult{Name: "Network", Status: "warn", Detail: "cannot reach github.com"}
 	}
-	io.Copy(io.Discard, resp.Body)
+	io.Copy(io.Discard, resp.Body) //nolint:errcheck
 	resp.Body.Close()
 	return checkResult{Name: "Network", Status: "pass", Detail: "github.com reachable"}
 }

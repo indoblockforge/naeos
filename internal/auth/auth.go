@@ -507,7 +507,9 @@ func (m *Manager) ListUsers() []*User {
 
 func generateToken() string {
 	b := make([]byte, 32)
-	_, _ = rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
 	return hex.EncodeToString(b)
 }
 

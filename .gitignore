@@ -53,5 +53,8 @@ cmd/naeos/out/
 # Temp
 tmp/
 .tmp/
+
+# Hugo build output
+site/public/
 documentation.o
 cmd/naeos/nonexistent/

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ .Language.Lang }}" data-theme="{{ .Site.Params.pwa.theme }}">
+<html lang="{{ .Language.Lang }}" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,15 +19,21 @@
     <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}"></noscript>
     {{ partial "head/analytics.html" . }}
+    <style id="overlay-init">#transition-overlay{opacity:1!important;pointer-events:auto!important}</style>
 </head>
 <body>
+    <div id="transition-overlay"></div>
     <a href="#main-content" class="skip-link">{{ i18n "skip_to_content" }}</a>
+    <div id="scroll-progress" class="scroll-progress" role="progressbar" aria-label="Scroll progress"></div>
     {{ partial "header.html" . }}
-    <main id="main-content">
+    <main id="main-content" class="page-transition">
         {{ block "main" . }}{{ end }}
     </main>
     {{ partial "footer.html" . }}
     {{ partial "search-modal.html" . }}
+    <button id="back-to-top" class="back-to-top" aria-label="{{ i18n "back_to_top" }}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 15l-6-6-6 6"/></svg>
+    </button>
     <script>
         var SEARCH_INDEX_URL = '{{ "index.json" | absURL }}';
         var SEARCH_PLACEHOLDER = '{{ i18n "search_placeholder" }}';

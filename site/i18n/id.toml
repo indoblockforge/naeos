@@ -280,6 +280,30 @@ other = "Ganti tema"
 [theme_dark]
 other = "Gelap"
 
+[back_to_top]
+other = "Kembali ke atas"
+
+[toggle_menu]
+other = "Buka/tutup menu"
+
+[nav_home]
+other = "Beranda"
+
+[nav_spec_language]
+other = "Bahasa Spec"
+
+[nav_ai_compiler]
+other = "Kompiler AI"
+
+[toc_title]
+other = "Di halaman ini"
+
+[blog_read]
+other = "bacaan"
+
+[share_this]
+other = "Bagikan:"
+
 [theme_light]
 other = "Terang"
 

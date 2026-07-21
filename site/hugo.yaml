@@ -67,6 +67,7 @@ markup:
     style: monokai
     lineNumbers: false
     codeFences: true
+    noClasses: false
 
 params:
   author: NAEOS Foundation

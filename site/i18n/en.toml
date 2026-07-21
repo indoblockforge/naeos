@@ -280,6 +280,30 @@ other = "Toggle theme"
 [theme_dark]
 other = "Dark"
 
+[back_to_top]
+other = "Back to top"
+
+[toggle_menu]
+other = "Toggle menu"
+
+[nav_home]
+other = "Home"
+
+[nav_spec_language]
+other = "Spec Language"
+
+[nav_ai_compiler]
+other = "AI Compiler"
+
+[toc_title]
+other = "On this page"
+
+[blog_read]
+other = "read"
+
+[share_this]
+other = "Share:"
+
 [theme_light]
 other = "Light"
 

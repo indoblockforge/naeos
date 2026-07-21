@@ -19,8 +19,10 @@
     <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.Integrity }}"></noscript>
     {{ partial "head/analytics.html" . }}
+    <style id="overlay-init">#transition-overlay{opacity:1!important;pointer-events:auto!important}</style>
 </head>
 <body>
+    <div id="transition-overlay"></div>
     <a href="#main-content" class="skip-link">{{ i18n "skip_to_content" }}</a>
     <div id="scroll-progress" class="scroll-progress" role="progressbar" aria-label="Scroll progress"></div>
     {{ partial "header.html" . }}

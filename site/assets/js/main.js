@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
   initCopyOnHover();
   initSidebarFilter();
   initImageLightbox();
+  initPageTransitions();
 });
 
 function toggleMobileMenu(force) {
@@ -720,5 +721,60 @@ function initScrollProgress() {
       });
       ticking = true;
     }
+  }, { passive: true });
+}
+
+function initPageTransitions() {
+  var mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (mql.matches) return;
+
+  var overlay = document.getElementById('transition-overlay');
+  var styleEl = document.getElementById('overlay-init');
+  if (!overlay) return;
+
+  var navTimeout;
+
+  function removeOverlayStyle() {
+    if (styleEl && styleEl.parentNode) styleEl.remove();
+  }
+
+  removeOverlayStyle();
+
+  window.addEventListener('pageshow', function (e) {
+    overlay.classList.remove('active');
+    removeOverlayStyle();
+  });
+
+  document.addEventListener('mousedown', function (e) {
+    var link = e.target.closest('a[href]');
+    if (!link || e.button !== 0) return;
+    if (link.hasAttribute('download') || link.hasAttribute('target')) return;
+    if (link.getAttribute('rel') === 'external') return;
+    if (link.closest('.search-overlay') || link.closest('#search-modal')) return;
+
+    var url = new URL(link.href, window.location.origin);
+    if (url.origin !== window.location.origin) return;
+    if (url.pathname + url.search === window.location.pathname + window.location.search) return;
+
+    e.preventDefault();
+    overlay.classList.add('active');
+    if (navTimeout) clearTimeout(navTimeout);
+    navTimeout = setTimeout(function () { window.location.href = url.href; }, 280);
+  }, { passive: false });
+
+  var prefetched = {};
+  document.addEventListener('mouseover', function (e) {
+    var link = e.target.closest('a[href]');
+    if (!link) return;
+    if (link.hostname !== window.location.hostname) return;
+    if (link.hasAttribute('download') || link.hasAttribute('target')) return;
+    var href = link.href;
+    if (prefetched[href]) return;
+    prefetched[href] = true;
+    var preload = document.createElement('link');
+    preload.rel = 'prefetch';
+    preload.href = href;
+    preload.as = 'document';
+    document.head.appendChild(preload);
   }, { passive: true });
 }

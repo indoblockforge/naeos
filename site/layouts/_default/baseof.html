@@ -49,6 +49,12 @@
             unnamed: {{ i18n "home_playground_unnamed" | jsonify }},
             invalidYaml: {{ i18n "home_playground_invalid_yaml" | jsonify }}
         };
+        var NEWSLETTER_I18N = {
+            invalidEmail: {{ i18n "newsletter_invalid_email" | jsonify }},
+            loading: {{ i18n "newsletter_loading" | jsonify }},
+            success: {{ i18n "newsletter_success" | jsonify }},
+            error: {{ i18n "newsletter_error" | jsonify }}
+        };
     </script>
     {{ $js := resources.Get "js/main.js" | resources.Minify | resources.Fingerprint "sha256" }}
     <script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.Integrity }}" defer></script>

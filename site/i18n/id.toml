@@ -202,6 +202,21 @@ other = "Tetap Terupdate"
 [footer_subscribe]
 other = "Langganan"
 
+[newsletter_email_placeholder]
+other = "email@anda.com"
+
+[newsletter_invalid_email]
+other = "Masukkan alamat email yang valid."
+
+[newsletter_loading]
+other = "Mendaftarkan..."
+
+[newsletter_success]
+other = "Terima kasih! Email Anda telah terdaftar."
+
+[newsletter_error]
+other = "Pendaftaran sedang tidak tersedia. Silakan coba lagi."
+
 [nav_about]
 other = "Tentang"
 

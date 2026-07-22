@@ -202,6 +202,21 @@ other = "Stay Updated"
 [footer_subscribe]
 other = "Subscribe"
 
+[newsletter_email_placeholder]
+other = "your@email.com"
+
+[newsletter_invalid_email]
+other = "Please enter a valid email address."
+
+[newsletter_loading]
+other = "Subscribing..."
+
+[newsletter_success]
+other = "Thank you! You have been subscribed."
+
+[newsletter_error]
+other = "Subscription is unavailable right now. Please try again."
+
 [nav_about]
 other = "About"
 

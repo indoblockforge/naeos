@@ -436,14 +436,49 @@ function initNewsletter() {
   var form = document.querySelector('.newsletter-form');
   var msg = document.querySelector('.newsletter-message');
   if (!form || !msg) return;
-  form.addEventListener('submit', function (e) {
+  form.addEventListener('submit', async function (e) {
     e.preventDefault();
-    var email = form.querySelector('input').value.trim();
-    if (!email) { msg.textContent = 'Please enter your email.'; return; }
-    msg.textContent = 'Thank you! You\'ve been subscribed.';
-    msg.style.color = 'var(--color-accent)';
-    form.querySelector('input').value = '';
-    setTimeout(function () { msg.textContent = ''; }, 3000);
+    var labels = window.NEWSLETTER_I18N || {};
+    var emailInput = form.querySelector('.newsletter-email');
+    var honeypot = form.querySelector('.newsletter-honeypot');
+    var submitButton = form.querySelector('button[type="submit"]');
+    var email = emailInput.value.trim();
+
+    msg.classList.remove('is-success', 'is-error');
+    if (!emailInput.validity.valid || !email) {
+      msg.textContent = labels.invalidEmail || 'Please enter a valid email address.';
+      msg.classList.add('is-error');
+      emailInput.focus();
+      return;
+    }
+
+    submitButton.disabled = true;
+    form.setAttribute('aria-busy', 'true');
+    msg.textContent = labels.loading || 'Subscribing...';
+
+    try {
+      var response = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email,
+          locale: document.documentElement.lang || 'en',
+          website: honeypot ? honeypot.value : ''
+        })
+      });
+      var result = await response.json();
+      if (!response.ok || !result.ok) throw new Error('newsletter_request_failed');
+
+      msg.textContent = labels.success || 'Thank you! You have been subscribed.';
+      msg.classList.add('is-success');
+      emailInput.value = '';
+    } catch (error) {
+      msg.textContent = labels.error || 'Subscription is unavailable right now. Please try again.';
+      msg.classList.add('is-error');
+    } finally {
+      submitButton.disabled = false;
+      form.removeAttribute('aria-busy');
+    }
   });
 }
 

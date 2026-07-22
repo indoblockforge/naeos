@@ -26,7 +26,8 @@
                 <div class="newsletter-section" style="margin-top:1.25rem;">
                     <h4 style="margin-bottom:0.5rem;color:var(--color-text);font-size:var(--font-size-sm);">{{ i18n "footer_newsletter" }}</h4>
                     <form class="newsletter-form" style="max-width:100%;" novalidate>
-                        <input type="email" placeholder="your@email.com" required aria-label="{{ i18n "footer_newsletter" }}" style="padding:0.5rem 0.75rem;font-size:var(--font-size-sm);">
+                        <input class="newsletter-email" type="email" name="email" placeholder="{{ i18n "newsletter_email_placeholder" }}" required autocomplete="email" aria-label="{{ i18n "footer_newsletter" }}" style="padding:0.5rem 0.75rem;font-size:var(--font-size-sm);">
+                        <input class="newsletter-honeypot" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
                         <button type="submit" class="btn btn-primary btn-sm">{{ i18n "footer_subscribe" }}</button>
                     </form>
                     <div class="newsletter-message" role="status" aria-live="polite"></div>

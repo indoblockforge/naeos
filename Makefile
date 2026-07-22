@@ -1,4 +1,4 @@
-.PHONY: build test lint fmt clean vet tidy check run help docker docker-local benchmark security e2e install-completion man site pdf
+.PHONY: build test lint fmt clean vet tidy check run help docker docker-local benchmark security e2e install-completion man site pdf og
 
 # Variables
 BINARY := naeos
@@ -116,8 +116,15 @@ install-completion: build
 	@./$(BINARY) completion fish > $(HOME)/.config/fish/completions/naeos.fish
 	@echo "Completions installed. Restart your shell or source the completion files."
 
+## og: Generate OG images (dark + light PNG from SVG)
+og:
+	@echo "Generating OG images..."
+	@cd site && npm install 2>&1 | tail -2 && node \
+		-e "const s=require('sharp'),f=require('fs'); \
+		Promise.all([s(f.readFileSync('static/images/og-dark.svg')).resize(1200,630,{fit:'fill'}).png().toFile('static/images/og-default.png'),s(f.readFileSync('static/images/og-light.svg')).resize(1200,630,{fit:'fill'}).png().toFile('static/images/og-default-light.png')]).then(()=>console.log('  OG images generated')).catch(e=>{console.error(e);process.exit(1)})"
+
 ## site: Build the Hugo website
-site:
+site: og
 	@echo "Building website..."
 	cp docs/openapi.yaml site/static/openapi.yaml
 	cd site && hugo --minify

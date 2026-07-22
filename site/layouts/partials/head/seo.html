@@ -6,13 +6,26 @@
 <meta property="og:description" content="{{ .Description | default .Site.Params.description }}">
 <meta property="og:type" content="{{ if or .IsHome (ne .Section "blog") }}website{{ else }}article{{ end }}">
 <meta property="og:url" content="{{ .Permalink }}">
+<meta property="og:image" content="{{ "images/og-default.svg" | absURL }}">
+<meta property="og:image:type" content="image/svg+xml">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:image" content="{{ "images/og-default.png" | absURL }}">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image" content="{{ "images/og-default-light.png" | absURL }}">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:site_name" content="NAEOS">
 <meta property="og:locale" content="{{ if eq .Lang "id" }}id_ID{{ else }}en_US{{ end }}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} — {{ .Site.Title }}{{ end }}">
 <meta name="twitter:description" content="{{ .Description | default .Site.Params.description }}">
-<meta name="twitter:image" content="{{ "images/og-default.png" | absURL }}">
+<meta name="twitter:image" content="{{ "images/og-default.svg" | absURL }}">
+<meta name="twitter:image:width" content="1200">
+<meta name="twitter:image:height" content="630">
 {{ range .Translations }}
 <link rel="alternate" hreflang="{{ .Language.Lang }}" href="{{ .Permalink }}">
 {{ end }}
@@ -39,7 +52,7 @@
             "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
             "softwareVersion": "{{ .Site.Params.version }}",
             "downloadUrl": "{{ "download/" | absURL }}",
-            "screenshot": "{{ "images/og-default.png" | absURL }}"
+            "screenshot": "{{ "images/og-default.svg" | absURL }}"
         },
         {
             "@type": "WebSite",

@@ -21,7 +21,7 @@ func TestRemoteRegistryList(t *testing.T) {
 	}))
 	defer server.Close()
 
-	rr := NewRemoteRegistry(server.URL, t.TempDir())
+	rr := NewRemoteRegistry(server.URL+"/plugins", t.TempDir())
 	plugins, err := rr.List()
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +44,7 @@ func TestRemoteRegistrySearch(t *testing.T) {
 	}))
 	defer server.Close()
 
-	rr := NewRemoteRegistry(server.URL, t.TempDir())
+	rr := NewRemoteRegistry(server.URL+"/plugins", t.TempDir())
 
 	results, err := rr.Search("python")
 	if err != nil {
@@ -84,7 +84,7 @@ func TestRemoteRegistryInstall(t *testing.T) {
 	serverURL = server.URL
 
 	installDir := t.TempDir()
-	rr := NewRemoteRegistry(server.URL, installDir)
+	rr := NewRemoteRegistry(server.URL+"/plugins", installDir)
 
 	path, err := rr.Install("test-plugin", "1.0.0")
 	if err != nil {
@@ -134,7 +134,7 @@ func TestRemoteRegistryNotFound(t *testing.T) {
 	}))
 	defer server.Close()
 
-	rr := NewRemoteRegistry(server.URL, t.TempDir())
+	rr := NewRemoteRegistry(server.URL+"/plugins", t.TempDir())
 	_, err := rr.Install("nonexistent", "")
 	if err == nil {
 		t.Error("expected error for nonexistent plugin")

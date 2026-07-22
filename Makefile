@@ -1,4 +1,4 @@
-.PHONY: build test lint fmt clean vet tidy check run help docker docker-local benchmark security e2e install-completion man site pdf og
+.PHONY: build test lint fmt clean vet tidy check run help docker docker-local benchmark security e2e install-completion man site pdf og schema
 
 # Variables
 BINARY := naeos
@@ -147,6 +147,11 @@ pdf:
 		-V author="NAEOS Foundation" \
 		-V date="$(shell date +%Y-%m-%d)" \
 		-o site/static/downloads/naeos-getting-started.pdf
+
+## schema: Generate NEIR JSON Schema from Go types
+schema:
+	@echo "Generating NEIR JSON Schema..."
+	go run ./cmd/neir-schema-gen/
 
 ## man: Generate man pages (requires cobra-doc)
 man: build
